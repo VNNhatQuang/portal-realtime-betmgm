@@ -1,1 +1,1 @@
-** ATTENTION : You need fake VPN
+* ATTENTION : You need fake VPN
