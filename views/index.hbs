@@ -1,0 +1,369 @@
+<h1 class="tournament-name" data-tournament="{{ tournament }}" data-date="{{ date }}" data-timeZone="{{ timeZone }}">
+    {{tournament}}
+</h1>
+<div id="content">
+
+    {{!-- <table border="1" style="font-size: large;">
+        <thead align="center">
+            <th style="padding: 10px 50px;"></th>
+            <th style="padding: 10px 50px;">Spread</th>
+            <th style="padding: 10px 50px;">Over/Under</th>
+            <th style="padding: 10px 50px;">Money</th>
+        </thead>
+        <tbody align="center">
+            <tr>
+                <td>A / B</td>
+                <td>+7.6 +120</td>
+                <td>O 222</td>
+                <td>+150</td>
+            </tr>
+            <tr>
+                <td>A / B</td>
+                <td>+7.6 +120</td>
+                <td>O 222</td>
+                <td>+150</td>
+            </tr>
+        </tbody>
+    </table> --}}
+
+</div>
+
+
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"
+    integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO"
+    crossorigin="anonymous"></script>
+
+<script>
+
+    const tournament = document.querySelector(".tournament-name").dataset.tournament;
+    const date = document.querySelector(".tournament-name").dataset.date;
+    const timeZone = document.querySelector(".tournament-name").dataset.timeZone;
+
+    let url = `http://localhost:3000/api/betmgm/${tournament}`;
+    if (date) url += `?date=${date}`;
+    if (timeZone) url += `&timeZone=${timeZone}`;
+
+
+    const socketName = {
+        "College Baseball": { sportName: "baseball" },
+        "MLB": { sportName: "baseball" },
+        "College": { sportName: "basketball" },
+        "NBA": { sportName: "basketball" },
+        "WNBA": { sportName: "basketball" },
+        "NCAAF": { sportName: "football" },
+        "NFL": { sportName: "football" },
+        "NFL Preseason": { sportName: "football" },
+        "UFL": { sportName: "football" },
+    }
+
+
+
+    // SOCKET
+    const socket = io("http://localhost:5002");
+
+    socket.on("connect", () => {
+        console.log(`Connected to server: ${socket.id}`);
+    });
+
+    socket.on(`message-${tournament.toLowerCase()}`, (matches) => {
+        {{!-- matches.map(match => {
+            // Lấy dữ liệu odds đang hiển thị trên giao diện
+            let oldOddSpreadTop = document.querySelector(`div[data-odd="${match.id}SpreadTop"]`)?.textContent;
+            let oldOddSpreadBottom = document.querySelector(`div[data-odd="${match.id}SpreadBottom"]`)?.textContent;
+            let oldOddTotalTop = document.querySelector(`div[data-odd="${match.id}TotalTop"]`)?.textContent;
+            let oldOddTotalBottom = document.querySelector(`div[data-odd="${match.id}TotalBottom"]`)?.textContent;
+            let oldOddMoneyTop = document.querySelector(`div[data-odd="${match.id}MoneyTop"]`)?.textContent;
+            let oldOddMoneyBottom = document.querySelector(`div[data-odd="${match.id}MoneyBottom"]`)?.textContent;
+
+            oldOddSpreadTop = oldOddSpreadTop?.split(/\s+/)
+            oldOddSpreadBottom = oldOddSpreadBottom?.split(/\s+/)
+            oldOddTotalTop = oldOddTotalTop?.split(/\s+/)
+            oldOddTotalBottom = oldOddTotalBottom?.split(/\s+/)
+            oldOddMoneyTop = oldOddMoneyTop?.split(/\s+/)
+            oldOddMoneyBottom = oldOddMoneyBottom?.split(/\s+/)
+
+            oldOddSpreadTop = Number(oldOddSpreadTop?.[oldOddSpreadTop.length - 2])
+            oldOddSpreadBottom = Number(oldOddSpreadBottom?.[oldOddSpreadBottom.length - 2])
+            oldOddTotalTop = Number(oldOddTotalTop?.[oldOddTotalTop.length - 2])
+            oldOddTotalBottom = Number(oldOddTotalBottom?.[oldOddTotalBottom.length - 2])
+            oldOddMoneyTop = Number(oldOddMoneyTop?.[oldOddMoneyTop.length - 2])
+            oldOddMoneyBottom = Number(oldOddMoneyBottom?.[oldOddMoneyBottom.length - 2])
+
+
+
+            // Dữ liệu odd mới
+            const odds = (match.optionMarkets.length > 0) ? match.optionMarkets : match.games;
+            const oddSpread = odds.find(odd => (["Spread", "Run Line Spread"].includes(odd.name.value) && (odd.status === "Visible" || odd.visibility == "Visible")));
+            const oddTotal = odds.find(odd => (["Totals"].includes(odd.name.value) && (odd.status === "Visible" || odd.visibility == "Visible")));
+            const oddMoney = odds.find(odd => (["Money Line"].includes(odd.name.value) && (odd.status === "Visible" || odd.visibility == "Visible")));
+
+
+
+            // So sánh 
+            // Spread
+            const elementSpreadTop = document.querySelector(`div[data-odd="${match.id}SpreadTop"]`);
+            const elementSpreadBottom = document.querySelector(`div[data-odd="${match.id}SpreadBottom"]`);
+            if (elementSpreadTop) {
+                const newSpreadTop = oddSpread?.options?.[0]?.price?.americanOdds ?? oddSpread?.results?.[0]?.americanOdds;
+                if (oldOddSpreadTop > newSpreadTop) {
+                    if (!elementSpreadTop.classList.contains('blink-red')) {
+                        elementSpreadTop.classList.remove('blink-green');
+                        elementSpreadTop.classList.add('blink-red');
+                        elementSpreadTop.innerHTML = `
+                            ${oddSpread?.options?.[0]?.attr ?? oddSpread?.results?.[0]?.attr ?? ""}
+                            <br>
+                            <b>${oddSpread?.options?.[0]?.price?.americanOdds ?? oddSpread?.results?.[0]?.americanOdds ?? "🔒"}</b>
+                        `
+                    }
+                } else if (oldOddSpreadTop < newSpreadTop) {
+                    if (!elementSpreadTop.classList.contains('blink-green')) {
+                        elementSpreadTop.classList.remove('blink-red');
+                        elementSpreadTop.classList.add('blink-green');
+                        elementSpreadTop.innerHTML = `
+                            ${oddSpread?.options?.[0]?.attr ?? oddSpread?.results?.[0]?.attr ?? ""}
+                            <br>
+                            <b>${oddSpread?.options?.[0]?.price?.americanOdds ?? oddSpread?.results?.[0]?.americanOdds ?? "🔒"}</b>
+                        `
+                    }
+                }
+            }
+            if (elementSpreadBottom) {
+                const newSpreadBottom = oddSpread?.options?.[1]?.price?.americanOdds ?? oddSpread?.results?.[1]?.americanOdds;
+                if (oldOddSpreadBottom > newSpreadBottom) {
+                    if (!elementSpreadBottom.classList.contains('blink-red')) {
+                        elementSpreadBottom.classList.remove('blink-green');
+                        elementSpreadBottom.classList.add('blink-red');
+                        elementSpreadBottom.innerHTML = `
+                            ${oddSpread?.options?.[1]?.attr ?? oddSpread?.results?.[1]?.attr ?? ""}
+                            <br>
+                            <b>${oddSpread?.options?.[1]?.price?.americanOdds ?? oddSpread?.results?.[1]?.americanOdds ?? "🔒"}</b>
+                        `
+                    }
+                } else if (oldOddSpreadBottom < newSpreadBottom) {
+                    if (!elementSpreadBottom.classList.contains('blink-green')) {
+                        elementSpreadBottom.classList.remove('blink-red');
+                        elementSpreadBottom.classList.add('blink-green');
+                        elementSpreadBottom.innerHTML = `
+                            ${oddSpread?.options?.[1]?.attr ?? oddSpread?.results?.[1]?.attr ?? ""}
+                            <br>
+                            <b>${oddSpread?.options?.[1]?.price?.americanOdds ?? oddSpread?.results?.[1]?.americanOdds ?? "🔒"}</b>
+                        `
+                    }
+                }
+
+            }
+            // Total
+            const elementTotalTop = document.querySelector(`div[data-odd="${match.id}TotalTop"]`);
+            const elementTotalBottom = document.querySelector(`div[data-odd="${match.id}TotalBottom"]`);
+            if (elementTotalTop) {
+                const newTotalTop = oddTotal?.options?.[0]?.price?.americanOdds ?? oddTotal?.results?.[0]?.americanOdds;
+                if (oldOddTotalTop > newTotalTop) {
+                    if (!elementTotalTop.classList.contains('blink-red')) {
+                        elementTotalTop.classList.remove('blink-green');
+                        elementTotalTop.classList.add('blink-red');
+                        elementTotalTop.innerHTML = `
+                            ${oddTotal?.options?.[0]?.name?.value ?? oddTotal?.results?.[0]?.name?.value ?? ""}
+                            <br>
+                            <b>${oddTotal?.options?.[0]?.price?.americanOdds ?? oddTotal?.results?.[0]?.americanOdds ?? "🔒"}</b>
+                        `
+                    }
+                } else if (oldOddTotalTop < newTotalTop) {
+                    if (!elementTotalTop.classList.contains('blink-green')) {
+                        elementTotalTop.classList.remove('blink-red');
+                        elementTotalTop.classList.add('blink-green');
+                        elementTotalTop.innerHTML = `
+                            ${oddTotal?.options?.[0]?.name?.value ?? oddTotal?.results?.[0]?.name?.value ?? ""}
+                            <br>
+                            <b>${oddTotal?.options?.[0]?.price?.americanOdds ?? oddTotal?.results?.[0]?.americanOdds ?? "🔒"}</b>
+                        `
+                    }
+                }
+            }
+            if (elementTotalBottom) {
+                const newTotalBottom = oddTotal?.options?.[1]?.price?.americanOdds ?? oddTotal?.results?.[1]?.americanOdds;
+                if (oldOddTotalBottom > newTotalBottom) {
+                    if (!elementTotalBottom.classList.contains('blink-red')) {
+                        elementTotalBottom.classList.remove('blink-green');
+                        elementTotalBottom.classList.add('blink-red');
+                        elementTotalBottom.innerHTML = `
+                            ${oddTotal?.options?.[1]?.name?.value ?? oddTotal?.results?.[1]?.name?.value ?? ""}
+                            <br>
+                            <b>${oddTotal?.options?.[1]?.price?.americanOdds ?? oddTotal?.results?.[1]?.americanOdds ?? "🔒"}</b>
+                        `
+                    }
+                } else if (oldOddTotalBottom < newTotalBottom) {
+                    if (!elementTotalBottom.classList.contains('blink-green')) {
+                        elementTotalBottom.classList.remove('blink-red');
+                        elementTotalBottom.classList.add('blink-green');
+                        elementTotalBottom.innerHTML = `
+                            ${oddTotal?.options?.[1]?.name?.value ?? oddTotal?.results?.[1]?.name?.value ?? ""}
+                            <br>
+                            <b>${oddTotal?.options?.[1]?.price?.americanOdds ?? oddTotal?.results?.[1]?.americanOdds ?? "🔒"}</b>
+                        `
+                    }
+                }
+
+            }
+            // Money
+            const elementMoneyTop = document.querySelector(`div[data-odd="${match.id}MoneyTop"]`);
+            const elementMoneyBottom = document.querySelector(`div[data-odd="${match.id}MoneyBottom"]`);
+            if (elementMoneyTop) {
+                const newMoneyTop = oddMoney?.options?.[0]?.price?.americanOdds ?? oddMoney?.results?.[0]?.americanOdds;
+                if (oldOddMoneyTop > newMoneyTop) {
+                    if (!elementMoneyTop.classList.contains('blink-red')) {
+                        elementMoneyTop.classList.remove('blink-green');
+                        elementMoneyTop.classList.add('blink-red');
+                        elementMoneyTop.innerHTML = `
+                            <b>${oddMoney?.options?.[0]?.price?.americanOdds ?? oddMoney?.results?.[0]?.americanOdds ?? "🔒"}</b>
+                        `
+                    }
+                } else if (oldOddMoneyTop < newMoneyTop) {
+                    if (!elementMoneyTop.classList.contains('blink-green')) {
+                        elementMoneyTop.classList.remove('blink-red');
+                        elementMoneyTop.classList.add('blink-green');
+                        elementMoneyTop.innerHTML = `
+                            <b>${oddMoney?.options?.[0]?.price?.americanOdds ?? oddMoney?.results?.[0]?.americanOdds ?? "🔒"}</b>
+                        `
+                    }
+                }
+            }
+            if (elementMoneyBottom) {
+                const newMoneyBottom = oddMoney?.options?.[1]?.price?.americanOdds ?? oddMoney?.results?.[1]?.americanOdds;
+                if (oldOddMoneyBottom > newMoneyBottom) {
+                    if (!elementMoneyBottom.classList.contains('blink-red')) {
+                        elementMoneyBottom.classList.remove('blink-green');
+                        elementMoneyBottom.classList.add('blink-red');
+                        elementMoneyBottom.innerHTML = `
+                            <b>${oddMoney?.options?.[1]?.price?.americanOdds ?? oddMoney?.results?.[1]?.americanOdds ?? "🔒"}</b>
+                        `
+                    }
+                } else if (oldOddMoneyBottom < newMoneyBottom) {
+                    if (!elementMoneyBottom.classList.contains('blink-green')) {
+                        elementMoneyBottom.classList.remove('blink-red');
+                        elementMoneyBottom.classList.add('blink-green');
+                        elementMoneyBottom.innerHTML = `
+                            <b>${oddMoney?.options?.[1]?.price?.americanOdds ?? oddMoney?.results?.[1]?.americanOdds ?? "🔒"}</b>
+                        `
+                    }
+                }
+
+            }
+        }) --}}
+
+        Render(matches);
+    })
+
+
+
+    async function FetchData(tournament) {
+        const matches = await fetch(url)
+            .then(response => response.json());
+
+        await Render(matches.data);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        FetchData(tournament);
+    }
+
+
+
+    async function Render(matches) {
+        if (matches != null) {
+            const contentElement = document.getElementById("content");
+
+            let dataHtml = "";
+            await Promise.all(
+                matches.map(match => {
+
+                    const odds = (match.optionMarkets.length > 0) ? match.optionMarkets : match.games;
+
+                    const oddSpread = odds.find(odd => (["Spread", "Run Line Spread"].includes(odd.name.value) && (odd.status === "Visible" || odd.visibility == "Visible")));
+                    const oddTotal = odds.find(odd => (["Totals"].includes(odd.name.value) && (odd.status === "Visible" || odd.visibility == "Visible")));
+                    const oddMoney = odds.find(odd => (["Money Line"].includes(odd.name.value) && (odd.status === "Visible" || odd.visibility == "Visible")));
+
+                    const dateConvert = new Date(`${match.startDate.replace("T", " ")} UTC`).toLocaleString();
+
+
+                    dataHtml += `
+                        <tr>
+                            <td style="text-align: start; padding: 30px 20px;">
+                                <span>${dateConvert.split(" ")[1]} • ${dateConvert.split(" ")[0]}</span>
+                                <hr>
+                                <strong>${match.participants[0].name.value}</strong>
+                                <br><br>
+                                <strong>${match.participants[1].name.value}</strong>
+                            </td>
+                            <td>
+                                <br><br>
+                                ${match?.scoreboard?.scoreDetailed?.player1["255"] ?? match?.scoreboard?.totalPoints?.player1["255"] ?? ""}
+                                <br><br>
+                                ${match?.scoreboard?.scoreDetailed?.player2["255"] ?? match?.scoreboard?.totalPoints?.player2["255"] ?? ""}
+                            </td>
+                            <td>
+                                <div class="box-odd" data-odd="${match.id}SpreadTop">
+                                    ${oddSpread?.options?.[0]?.attr ?? oddSpread?.results?.[0]?.attr ?? ""}
+                                    <br>
+                                    <b>${oddSpread?.options?.[0]?.price?.americanOdds ?? oddSpread?.results?.[0]?.americanOdds ?? "🔒"}</b>
+                                </div>
+                                <div class="box-odd" data-odd="${match.id}SpreadBottom">
+                                    ${oddSpread?.options?.[1]?.attr ?? oddSpread?.results[1]?.attr ?? ""}
+                                    <br>
+                                    <b>${oddSpread?.options?.[1]?.price?.americanOdds ?? oddSpread?.results[1]?.americanOdds ?? "🔒"}</b>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="box-odd" data-odd="${match.id}TotalTop">
+                                    ${oddTotal?.options?.[0]?.name?.value ?? oddTotal?.results?.[0]?.name?.value ?? ""}
+                                    <br>
+                                    <b>${oddTotal?.options?.[0]?.price?.americanOdds ?? oddTotal?.results?.[0]?.americanOdds ?? "🔒"}</b>
+                                </div>
+                                <div class="box-odd" data-odd="${match.id}TotalBottom">
+                                    ${oddTotal?.options?.[1]?.name?.value ?? oddTotal?.results[1]?.name?.value ?? ""}
+                                    <br>
+                                    <b>${oddTotal?.options?.[1]?.price?.americanOdds ?? oddTotal?.results[1]?.americanOdds ?? "🔒"}</b>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="box-odd" data-odd="${match.id}MoneyTop">
+                                    <b>${oddMoney?.options?.[0]?.price?.americanOdds ?? oddMoney?.results?.[0]?.americanOdds ?? "🔒"}</b>
+                                </div>
+                                <div class="box-odd" data-odd="${match.id}MoneyBottom">
+                                    <b>${oddMoney?.options?.[1]?.price?.americanOdds ?? oddMoney?.results[1]?.americanOdds ?? "🔒"}</b>
+                                </div>
+                            </td>
+                        </tr>
+                    `
+
+                })
+            )
+
+
+
+            const tbody = document.querySelector("#content>table>tbody");
+
+            if (dataHtml.replaceAll(/[\n\s]|&amp;|&/g, "").trim().toLowerCase() !== tbody?.innerHTML?.replaceAll(/[\n\s]|&amp;|&/g, "")?.trim().toLowerCase()) {
+                contentElement.innerHTML = `
+                    <table border="0" style="font-size: large;">
+                        <thead align="center">
+                            <th style="padding: 10px 50px;"></th>
+                            <th style="padding: 10px 50px;"></th>
+                            <th style="padding: 10px 50px;">Spread</th>
+                            <th style="padding: 10px 50px;">Over/Under</th>
+                            <th style="padding: 10px 50px;">Money</th>
+                        </thead>
+                        <tbody align="center">
+                            ${dataHtml}
+                        </tbody>
+                    </table>
+                `;
+            }
+
+
+        }
+    }
+
+
+
+    FetchData(tournament);
+
+</script>
